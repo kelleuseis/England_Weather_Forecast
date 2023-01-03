@@ -1,0 +1,11 @@
+name: weather
+channels:
+        - defaults
+        - conda-forge
+dependencies:
+        - pip
+        - ipython
+        - jupyter
+        - pygmt
+        - pip:
+                - -r requirements.txt
