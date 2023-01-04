@@ -7,8 +7,9 @@ import os
 import argparse
 import json
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 import signal
+from tqdm import tqdm
 
 def get_live_station_measures(station_reference=None, param='rainfall', filename=None):
     """Return readings from live API.
@@ -101,14 +102,15 @@ def download_all_station_data(param="level", df=None):
     
     if df is None:
         usrinp = input("Input DataFrame not specified: " + \
-                       "Do you perhaps want to build upon an existing file? [Y/N] ")
+                       "Do you perhaps want to build upon an existing file? " + \
+                       "(This will not overwrite the file.) [Y/N] ")
         
         if usrinp.upper() != "N":
             df = retrieve_file()
     
     
-    usrinp = input("Downloading the full dataset would take approx. 30 mins " + \
-                   "!!! Please ensure that output is saved to a variable !!! Proceed? [Y/N] ")
+    usrinp = input("Downloading the full dataset would take approx. 60 mins " + \
+                   "!!!Please ensure that output is saved to a variable!!! Proceed? [Y/N] ")
 
     if usrinp.upper() == "N":
         return None
@@ -133,27 +135,28 @@ def download_all_station_data(param="level", df=None):
         data = data.drop(index=df.reset_index().stationReference.tolist(), 
                          errors='ignore')
     
-    urllist = data.reset_index().stationReference.apply(lambda x: \
-                f"https://environment.data.gov.uk/flood-monitoring/id/stations/{str(x)}.json").tolist()
-    
-    
-    stninfolist = []
         
     executor = ThreadPoolExecutor(max_workers=min(os.cpu_count()+4, len(data.index)))
     futures = []
+    stninfolist = []
     
-    for ref in data.index.tolist():
+    for ref in tqdm(data.index.tolist()):
         url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{ref}.json"
         futures.append(executor.submit(download_station_data, url))
     
-    try:
-        for future in as_completed(futures):
-            print(f"{len(stninfolist)}/{len(data.index)} downloaded", end="\r")
+    print("Download requested! Starting download ...")
+    done,_ = wait(futures)
+    print("Dataset downloaded! Saving to variable ...")
+    
+    for future in tqdm(done):
+        try:
             stninfolist.append(future.result())
-    except Exception as e:
-        print(f"{e}: Download Stopped")
-        executor.shutdown(wait=False)
+        except:
+            continue
 
+    executor.shutdown(wait=False)
+    
+    
     stninfodf = pd.DataFrame(stninfolist).set_index('stationReference')
     if df is not None:
         stninfodf = pd.concat([df,stninfodf])
