@@ -8,6 +8,30 @@ from sklearn.neighbors import NearestNeighbors
 import live
 
 
+class Ellipsoid(object):
+    """ Data structure for a global ellipsoid. """
+
+    def __init__(self, a, b, F_0):
+        self.a = a
+        self.b = b
+        self.n = (a - b) / (a + b)
+        self.e2 = (a ** 2 - b ** 2) / a ** 2
+        self.F_0 = F_0
+        self.H = 0
+
+
+class Datum(Ellipsoid):
+    """ Data structure for a global datum. """
+
+    def __init__(self, a, b, F_0, phi_0, lam_0, E_0, N_0, H):
+        super().__init__(a, b, F_0)
+        self.phi_0 = phi_0
+        self.lam_0 = lam_0
+        self.E_0 = E_0
+        self.N_0 = N_0
+        self.H = H
+
+
 def get_easting_northing_from_gps_lat_long(phi, lam, rads=False):
     """ Get OSGB36 easting/northing from GPS latitude and longitude pairs.
 
@@ -40,37 +64,39 @@ def get_easting_northing_from_gps_lat_long(phi, lam, rads=False):
     Based on the formulas in "A guide to coordinate systems in Great Britain".
     See also https://webapps.bgs.ac.uk/data/webservices/convertForm.cfm
     """
+    dat = Datum(a=6377563.396, b=6356256.910, F_0=0.9996012717, 
+                phi_0=np.deg2rad(49.0), lam_0=np.deg2rad(-2.), 
+                E_0=400000, N_0=-100000, H=24.7)
 
-    ell = wgs84
-    dat = osgb36
+    ell = Ellipsoid(a=6378137, b=6356752.3142, F_0=0.9996)
 
     if rads == False:
-        phi = dms2rad(phi)
-        lam = dms2rad(lam)
+        phi = np.deg2rad(np.asarray(phi))
+        lam = np.deg2rad(np.asarray(lam))
 
     n = (dat.a - dat.b) / (dat.a + dat.b)
-    v = dat.a * dat.F_0 * (1 - dat.e2 * sin(phi) ** 2) ** (-0.5)
+    v = dat.a * dat.F_0 * (1 - dat.e2 * np.sin(phi) ** 2) ** (-0.5)
 
-    rho = dat.a * dat.F_0 * (1 - dat.e2) * (1 - dat.e2 * sin(phi) ** 2) ** (-1.5)
+    rho = dat.a * dat.F_0 * (1 - dat.e2) * (1 - dat.e2 * np.sin(phi) ** 2) ** (-1.5)
     eta2 = v / rho - 1
 
     M = dat.b * dat.F_0 * ((1 + n + 5 / 4 * n ** 2 + 5 / 4 * n ** 3) * (phi - dat.phi_0) - (
-            3 * n + 3 * n ** 2 + 21 / 8 * n ** 3) * sin(phi - dat.phi_0) * cos(phi + dat.phi_0) + \
-                           (15 / 8 * n ** 2 + 15 / 8 * n ** 3) * sin(2 * (phi - dat.phi_0)) * cos(
-                2 * (phi + dat.phi_0)) - 35 / 24 * n ** 3 * sin(3 * (phi - dat.phi_0)) * cos(3 * (phi - dat.phi_0)))
+            3 * n + 3 * n ** 2 + 21 / 8 * n ** 3) * np.sin(phi - dat.phi_0) * np.cos(phi + dat.phi_0) + \
+                           (15 / 8 * n ** 2 + 15 / 8 * n ** 3) * np.sin(2 * (phi - dat.phi_0)) * np.cos(
+                2 * (phi + dat.phi_0)) - 35 / 24 * n ** 3 * np.sin(3 * (phi - dat.phi_0)) * np.cos(3 * (phi - dat.phi_0)))
 
     I = M + dat.N_0
-    II = v / 2 * sin(phi) * cos(phi)
-    III = v / 24 * sin(phi) * cos(phi) ** 3 * (5 - tan(phi) ** 2 + 9 * eta2)
-    IIIA = v / 720 * sin(phi) * cos(phi) ** 5 * (61 - 58 * tan(phi) ** 2 + tan(phi) ** 4)
-    IV = v * cos(phi)
-    V = v / 6 * cos(phi) ** 3 * (v / rho - tan(phi) ** 2)
-    VI = v / 120 * cos(phi) ** 5 * (5 - 18 * tan(phi) ** 2 + tan(phi) ** 4 + 14 * eta2 - 58 * (tan(phi) ** 2) * eta2)
+    II = v / 2 * np.sin(phi) * np.cos(phi)
+    III = v / 24 * np.sin(phi) * np.cos(phi) ** 3 * (5 - np.tan(phi) ** 2 + 9 * eta2)
+    IIIA = v / 720 * np.sin(phi) * np.cos(phi) ** 5 * (61 - 58 * np.tan(phi) ** 2 + np.tan(phi) ** 4)
+    IV = v * np.cos(phi)
+    V = v / 6 * np.cos(phi) ** 3 * (v / rho - np.tan(phi) ** 2)
+    VI = v / 120 * np.cos(phi) ** 5 * (5 - 18 * np.tan(phi) ** 2 + np.tan(phi) ** 4 + 14 * eta2 - 58 * (np.tan(phi) ** 2) * eta2)
 
     N = I + II * (lam - dat.lam_0) ** 2 + III * (lam - dat.lam_0) ** 4 + IIIA * (lam - dat.lam_0) ** 6
     E = dat.E_0 + IV * (lam - dat.lam_0) + V * (lam - dat.lam_0) ** 3 + VI * (lam - dat.lam_0) ** 5
 
-    return array(E), array(N)
+    return np.array(E), np.array(N)
 
 
 
@@ -119,8 +145,8 @@ def riverplt(plt_range=1.5, live_data=False, showplt=True, filename=None):
         except:
             print('Connection Timed Out: Switching to default values')
 
-    riversta_lat = river_df.latitude.tolist()
-    riversta_long = river_df.longitude.tolist()
+    riversta_lat = river_df.lat.tolist()
+    riversta_long = river_df.long.tolist()
     riversta_val = (river_df.latestReading / river_df.typicalRangeHigh).tolist()
 
     riversta_arr = pygmt.blockmean(x=riversta_long, y=riversta_lat, z=riversta_val, region="-5.5/2/50/55",
@@ -233,8 +259,8 @@ def tideplt(showplt=True, filename=None):
                                  'tidedata.csv'))
     tide_df = pd.read_csv(tidedata_path)
 
-    tidesta_lat = tide_df.latitude.tolist()
-    tidesta_long = tide_df.longitude.tolist()
+    tidesta_lat = tide_df.lat.tolist()
+    tidesta_long = tide_df.long.tolist()
     tidesta_val = tide_df.latestReading.tolist()
 
     tsinterp_grd = pygmt.surface(x=tidesta_long, y=tidesta_lat, z=tidesta_val, region="-5.5/2/50/55", spacing=0.05)
@@ -295,7 +321,7 @@ def rrt_value(long, lat, from_live=False):
     rain_df,_ = rainplt(showplt=False,live_data=from_live)
 
     tide_df,_ = tideplt(showplt=False)
-    tide_df['Easting'], tide_df['Northing'] = geo.get_easting_northing_from_gps_lat_long(
+    tide_df['Easting'], tide_df['Northing'] = get_easting_northing_from_gps_lat_long(
         tide_df.y.tolist(), tide_df.x.tolist()
     )
     tide_df = pygmt.select(tide_df, mask='k/s/k/s/k')
