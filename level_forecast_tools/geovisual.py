@@ -5,7 +5,7 @@ import pandas as pd
 import pygmt
 from sklearn.neighbors import NearestNeighbors
 
-import live
+from level_forecast_tools import live
 
 
 class Ellipsoid(object):
@@ -131,8 +131,7 @@ def riverplt(plt_range=1.5, live_data=False, showplt=True, filename=None):
     '''
 
     riverdata_path = os.sep.join((os.path.dirname(__file__),
-                                  'data',
-                                  'riverdata.csv'))
+                                  'data', 'riverdata.csv'))
     river_df = pd.read_csv(riverdata_path)
 
     if live_data == True:
@@ -199,8 +198,7 @@ def rainplt(plt_range=0.3, live_data=False, showplt=True, filename=None):
     '''
 
     raindata_path = os.sep.join((os.path.dirname(__file__),
-                                 'data',
-                                 'raindata.csv'))
+                                 'data', 'raindata.csv'))
     rain_df = pd.read_csv(raindata_path)
 
     if live_data == True:
@@ -255,8 +253,7 @@ def tideplt(showplt=True, filename=None):
     '''
 
     tidedata_path = os.sep.join((os.path.dirname(__file__),
-                                 'data',
-                                 'tidedata.csv'))
+                                 'data', 'tidedata.csv'))
     tide_df = pd.read_csv(tidedata_path)
 
     tidesta_lat = tide_df.lat.tolist()
@@ -349,7 +346,11 @@ def rrt_value(long, lat, from_live=False):
 
 
 def get_nearest_stations(long, lat, radius=30000, qualifier="river"):
-    stndf = pd.read_csv(f'data/{qualifier}data.csv')
+    
+    path =  os.sep.join((os.path.dirname(__file__), 
+                         'data', f'{qualifier}data.csv'))
+    
+    stndf = pd.read_csv(path)
     eas, nor = get_easting_northing_from_gps_lat_long(lat, long)
     
     stnmap = NearestNeighbors(radius=radius)

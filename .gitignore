@@ -1,7 +1,8 @@
 __pycache__/
 .ipynb_checkpoints/
-data/.ipynb_checkpoints/
-data/archive/
+level_forecast_tools/.ipynb_checkpoints/
+level_forecast_tools/data/.ipynb_checkpoints/
+level_forecast_tools/data/archive/
 
 test-notebook.ipynb
-data/test-notebook.ipynb
+level_forecast_tools/data/test-notebook.ipynb

@@ -37,7 +37,9 @@ def generate_dtlist(start=start_def, end=end_def, count=1):
 def get_archive_data(start=start_def, end=end_def, tbname='temp'):
     dtlist = generate_dtlist(start, end)
     
-    csvdb = sa.create_engine('sqlite:///data/archive/csv_database.db', 
+    dbpath = os.sep.join((os.path.dirname(__file__), 
+                          'data/archive/csv_database.db'))
+    csvdb = sa.create_engine('sqlite://' + dbpath, 
                              connect_args={'timeout': 15})
     sql.execute(f'DROP TABLE IF EXISTS {tbname}', csvdb)
     
@@ -61,9 +63,12 @@ def get_archive_data(start=start_def, end=end_def, tbname='temp'):
 
 
 def load_archive_data(staref, start=start_def, end=end_def, 
-                      count=1, train=False, tbname='temp'):
+                      count=1, train=False, tbname='temp', 
+                      outdir='data/archive'):
     
-    csvdb = sa.create_engine('sqlite:///data/archive/csv_database.db', 
+    dbpath = os.sep.join((os.path.dirname(__file__), 
+                          'data/archive/csv_database.db'))
+    csvdb = sa.create_engine('sqlite://' + dbpath, 
                              connect_args={'timeout': 15})
     if not sa.inspect(csvdb).has_table(tbname):
         get_archive_data(start, end, tbname)
@@ -89,8 +94,10 @@ def load_archive_data(staref, start=start_def, end=end_def,
 
             if train:
                 valser.iloc[:,-1] = valser.iloc[:,-1].shift(15, axis=0)
-
-            with open(f'data/archive/valser_{lowbound[:13]}.tmp','w') as outfile:
+            
+            outpath = os.sep.join((os.getcwd(), outdir, 
+                                   f'valser_{lowbound[:13]}.tmp'))
+            with open(outpath,'w') as outfile:
                 outfile.write(valser.to_csv(index=False))
         
         except:
