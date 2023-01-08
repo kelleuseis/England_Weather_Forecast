@@ -1,6 +1,7 @@
 __pycache__/
 .ipynb_checkpoints/
 data/.ipynb_checkpoints/
+data/archive/
 
 test-notebook.ipynb
 data/test-notebook.ipynb
