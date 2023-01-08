@@ -139,7 +139,7 @@ def riverplt(plt_range=1.5, live_data=False, showplt=True, filename=None):
         try:
             stareflist = pd.read_csv(riverdata_path).stationReference
             print(f'Loading Data for {len(stareflist)} stations...')
-            riverlive_df = live.get_live_station_data(station_reference=stareflist, param='level')
+            riverlive_df = live.get_live_station_measures(station_reference=stareflist, param='level')
             print('Data Loaded!')
             river_df.latestReading = riverlive_df.latestReading.tolist()
         except:
@@ -207,7 +207,7 @@ def rainplt(plt_range=0.3, live_data=False, showplt=True, filename=None):
         try:
             stareflist = pd.read_csv(raindata_path).stationReference
             print(f'Loading Data for {len(stareflist)} stations...')
-            rainlive_df = live.get_live_station_data(station_reference=stareflist)
+            rainlive_df = live.get_live_station_measures(station_reference=stareflist)
             print('Data Loaded!')
             rain_df.latestReading = rainlive_df.latestReading.tolist()
         except:
@@ -262,7 +262,9 @@ def tideplt(showplt=True, filename=None):
     tidesta_lat = tide_df.lat.tolist()
     tidesta_long = tide_df.long.tolist()
     tidesta_val = tide_df.latestReading.tolist()
-
+    
+    tidesta_arr = pygmt.blockmean(x=tidesta_long, y=tidesta_lat, z=tidesta_val, region="-5.5/2/50/55",
+                                  spacing=0.05).to_numpy()
     tsinterp_grd = pygmt.surface(x=tidesta_long, y=tidesta_lat, z=tidesta_val, region="-5.5/2/50/55", spacing=0.05)
     tsinterp_xyz = pygmt.grd2xyz(tsinterp_grd)
 
@@ -312,6 +314,7 @@ def rrt_value(long, lat, from_live=False):
 
     coordf = pd.DataFrame({'Longitude': long, 'Latitude': lat,
                            'Easting': eas, 'Northing': nor})
+    coordf = pygmt.select(coordf, mask='s/k/s/k/s', region="-5.5/2/50/55")
     coordf[['x', 'y']] = coordf[['Longitude', 'Latitude']].apply(
         lambda x: np.round(np.round(x / 0.05, 0) * 0.05, 2)
     )
@@ -337,10 +340,25 @@ def rrt_value(long, lat, from_live=False):
     coordf['riv_val'] = coordf.apply(lambda x: retrval(river_df, x), axis=1)
     coordf['rain_val'] = coordf.apply(lambda x: retrval(rain_df, x), axis=1)
 
-    coordf['coast_dist'],coordf['tide_val'] = coast.kneighbors(coordf[['Easting','Northing']])
+    coordf['coast_dist'], coordf['tide_val'] = coast.kneighbors(coordf[['Easting','Northing']])
     coordf.tide_val = coordf.tide_val.apply(lambda x: tide_df.iloc[x].z)
+    coordf.coast_dist = coordf.coast_dist.apply(lambda x: np.round(x, -2))
     
     return coordf.drop(columns=['x','y'])
+
+
+
+def get_nearest_stations(long, lat, radius=30000, qualifier="river"):
+    stndf = pd.read_csv(f'data/{qualifier}data.csv')
+    eas, nor = get_easting_northing_from_gps_lat_long(lat, long)
+    
+    stnmap = NearestNeighbors(radius=radius)
+    stnmap.fit(stndf[['easting', 'northing']].to_numpy())
+    
+    dist, idx = stnmap.radius_neighbors([[eas, nor]])
+    stnlist = pd.DataFrame([*idx, *dist]).transpose().sort_values(1)[0].tolist()
+    
+    return stndf.iloc[stnlist]
 
 
 
