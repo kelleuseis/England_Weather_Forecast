@@ -1,3 +1,3 @@
 from .live import *
-from .map import *
+from .geovisual import *
 from .dataload import *
