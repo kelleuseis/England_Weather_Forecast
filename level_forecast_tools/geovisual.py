@@ -1,3 +1,5 @@
+"""Geodata visualization and translation"""
+
 import os
 
 import numpy as np
@@ -5,7 +7,7 @@ import pandas as pd
 import pygmt
 from sklearn.neighbors import NearestNeighbors
 
-from level_forecast_tools import live
+from .live import *
 
 
 class Ellipsoid(object):
@@ -114,8 +116,7 @@ def riverplt(plt_range=1.5, live_data=False, showplt=True, filename=None):
 
     live_data:  bool
                 Returns live data from Real Time API. Default
-                option is False. NOTE: Getting live data may
-                take a while.
+                option is False. 
 
     showplt:    bool
                 Plots figure in kernel. Default True.
@@ -134,19 +135,20 @@ def riverplt(plt_range=1.5, live_data=False, showplt=True, filename=None):
                                   'data', 'riverdata.csv'))
     river_df = pd.read_csv(riverdata_path)
 
-    if live_data == True:
+    if live_data:
         try:
             stareflist = pd.read_csv(riverdata_path).stationReference
             print(f'Loading Data for {len(stareflist)} stations...')
-            riverlive_df = live.get_live_station_measures(station_reference=stareflist, param='level')
+            riverlive_df = get_live_station_measures(station_reference=stareflist, param='level')
+            riverlive_df = riverlive_df[~riverlive_df.index.duplicated(keep='last')]
             print('Data Loaded!')
-            river_df.latestReading = riverlive_df.latestReading.tolist()
+            river_df.latestReading = riverlive_df['latestReading.value'].tolist()
         except:
             print('Connection Timed Out: Switching to default values')
 
     riversta_lat = river_df.lat.tolist()
     riversta_long = river_df.long.tolist()
-    riversta_val = (river_df.latestReading / river_df.typicalRangeHigh).tolist()
+    riversta_val = (-(river_df.typicalRangeHigh-river_df.latestReading) / river_df.typicalRangeHigh).tolist()
 
     riversta_arr = pygmt.blockmean(x=riversta_long, y=riversta_lat, z=riversta_val, region="-5.5/2/50/55",
                                    spacing=0.05).to_numpy()
@@ -159,7 +161,7 @@ def riverplt(plt_range=1.5, live_data=False, showplt=True, filename=None):
     fig.coast(rivers='a', shorelines='1/0.5p', water='white')
     fig.colorbar(frame=["x+lStage"], position="+e")
 
-    if showplt == True:
+    if showplt:
         fig.show()
 
     if filename is not None:
@@ -181,8 +183,7 @@ def rainplt(plt_range=0.3, live_data=False, showplt=True, filename=None):
 
     live_data:  bool
                 Returns live data from Real Time API. Default
-                option is False. NOTE: Getting live data may
-                take a while.
+                option is False. 
 
     showplt:    bool
                 Plots figure in kernel. Default True.
@@ -201,13 +202,14 @@ def rainplt(plt_range=0.3, live_data=False, showplt=True, filename=None):
                                  'data', 'raindata.csv'))
     rain_df = pd.read_csv(raindata_path)
 
-    if live_data == True:
+    if live_data:
         try:
             stareflist = pd.read_csv(raindata_path).stationReference
             print(f'Loading Data for {len(stareflist)} stations...')
-            rainlive_df = live.get_live_station_measures(station_reference=stareflist)
+            rainlive_df = get_live_station_measures(station_reference=stareflist)
+            rainlive_df = rainlive_df[~rainlive_df.index.duplicated(keep='last')]
             print('Data Loaded!')
-            rain_df.latestReading = rainlive_df.latestReading.tolist()
+            rain_df.latestReading = rainlive_df['latestReading.value'].tolist()
         except:
             print('Connection Timed Out: Switching to default values')
 
@@ -226,7 +228,7 @@ def rainplt(plt_range=0.3, live_data=False, showplt=True, filename=None):
     fig.coast(rivers='a', shorelines="1/0.5p", water='white')
     fig.colorbar(frame=["x+lRainfall", "y+lmm"], position="+e")
 
-    if showplt == True:
+    if showplt:
         fig.show()
 
     if filename is not None:
@@ -272,7 +274,7 @@ def tideplt(showplt=True, filename=None):
     fig.plot(x=tidesta_long, y=tidesta_lat, style="s0.2c", color=tidesta_val, cmap='panoply')
     fig.colorbar(frame=["x+lTidal Range", "y+lm(AOD)"])
 
-    if showplt == True:
+    if showplt:
         fig.show()
 
     if filename is not None:

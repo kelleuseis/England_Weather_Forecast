@@ -4,6 +4,7 @@ import numpy as np
 import sqlalchemy as sa
 from datetime import datetime, timedelta
 
+import os
 from tqdm import tqdm
 import urllib.request
 import contextlib
@@ -25,7 +26,7 @@ def generate_dtlist(start=start_def, end=end_def, count=1):
             ''.join(filter(str.isdigit, str(end)))[14::-1].zfill(14)[::-1], 
             "%Y%m%d%H%M%S")
     
-    assert start >= start_def and start < end_def, \
+    assert start >= start_def and start < end_def and start <= end, \
             "Please choose a reasonable time range"
     assert end > start_def and end <= end_def, \
             "Please choose a reasonable time range"
@@ -41,7 +42,7 @@ def get_archive_data(start=start_def, end=end_def,
     
     dbpath = os.sep.join((os.path.dirname(__file__), 
                           'data/archive/csv_database.db'))
-    csvdb = sa.create_engine('sqlite://' + dbpath, 
+    csvdb = sa.create_engine('sqlite:///' + dbpath, 
                              connect_args={'timeout': 15})
     if overwrite:
         sql.execute(f'DROP TABLE IF EXISTS {tbname}', csvdb)
@@ -66,12 +67,11 @@ def get_archive_data(start=start_def, end=end_def,
 
 
 def load_archive_data(staref, start=start_def, end=end_def, 
-                      count=1, train=False, lag=2, tbname='temp', 
-                      outdir='data/archive'):
+                      count=1, tbname='temp', outdir='data/archive'):
     
     dbpath = os.sep.join((os.path.dirname(__file__), 
                           'data/archive/csv_database.db'))
-    csvdb = sa.create_engine('sqlite://' + dbpath, 
+    csvdb = sa.create_engine('sqlite:///' + dbpath, 
                              connect_args={'timeout': 15})
     if not sa.inspect(csvdb).has_table(tbname):
         get_archive_data(start, end, tbname)
@@ -94,9 +94,6 @@ def load_archive_data(staref, start=start_def, end=end_def,
                 f'AND (dateTime >= "{lowbound}")', csvdb
             ).groupby('stationReference').value.apply(list).apply(pd.Series).transpose()
 
-
-            if train:
-                valser.iloc[:,-1] = valser.iloc[:,-1].shift(lag, axis=0)
             
             outpath = os.sep.join((os.getcwd(), outdir, 
                                    f'valser_{lowbound[:13]}.tmp'))
