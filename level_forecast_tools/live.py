@@ -54,7 +54,21 @@ def get_live_station_measures(station_reference=None, param='rainfall', filename
     return data
 
 
-def get_live_station_readings(station_reference):
+def get_live_station_readings(station_reference):   
+    '''
+    Get all recent readings from the past month for a 
+    given station.
+    
+    Parameters
+    -----------------------------------------------
+    station_reference: str
+                       Station reference
+                       
+    Returns
+    -----------------------------------------------
+    Dictionary indexed by datetime.
+    '''
+    
     url = 'https://environment.data.gov.uk/flood-monitoring/data/readings?_limit=10000'
     with urllib.request.urlopen(
         'https://environment.data.gov.uk/flood-monitoring/data/readings.json' +\
@@ -69,6 +83,10 @@ def get_live_station_readings(station_reference):
 
 
 def retrieve_CSV():
+    '''
+    Interactive script for retrieving CSV files.
+    '''
+    
     matches = []
     keywords = input('Please specify keyword(s) e.g. station, data: ')
 
@@ -95,6 +113,19 @@ def retrieve_CSV():
     
     
 def get_all_recent_readings(station_reference=None):
+    '''
+    Get all recent readings from the past month for a 
+    given list of stations.
+    
+    Parameters
+    -----------------------------------------------
+    station_reference: str or array-like or None
+                       List of stations
+                       
+    Returns
+    -----------------------------------------------
+    Pandas DataFrame indexed by datetime.
+    '''
     
     if station_reference is None:
         usrinp = input("Downloading the full dataset would take approx. 60 mins " + \
@@ -155,6 +186,19 @@ def get_all_recent_readings(station_reference=None):
     
     
 def download_station_info(station_reference):
+    '''
+    Get station location and range data for a given
+    station.
+    
+    Parameters
+    -----------------------------------------------
+    station_reference: str
+                       Station reference
+                       
+    Returns
+    -----------------------------------------------
+    Dictionary of station info.
+    '''
     
     with urllib.request.urlopen(
         f"https://environment.data.gov.uk/flood-monitoring/id/stations/{station_reference}.json"
@@ -177,6 +221,19 @@ def download_station_info(station_reference):
 
 
 def download_all_station_info(param="level", df=None):
+    '''
+    Get station location and range data for a given 
+    list of stations.
+    
+    Parameters
+    -----------------------------------------------
+    station_reference: str or array-like or None
+                       List of stations
+                       
+    Returns
+    -----------------------------------------------
+    Pandas DataFrame indexed by stationReference.
+    '''
     
     if df is None:
         usrinp = input("Input DataFrame not specified: " + \

@@ -35,37 +35,33 @@ class Datum(Ellipsoid):
 
 
 def get_easting_northing_from_gps_lat_long(phi, lam, rads=False):
-    """ Get OSGB36 easting/northing from GPS latitude and longitude pairs.
+    '''
+    Get OSGB36 easting/northing from GPS latitude and longitude pairs.
 
     Parameters
-    ----------
-    phi: float/arraylike
+    --------------------------------------------
+    phi: float or arraylike
         GPS (i.e. WGS84 datum) latitude value(s)
         
-    lam: float/arrayling
+    lam: float or arraylike
         GPS (i.e. WGS84 datum) longitude value(s).
         
     rads: bool
         If true, specifies input is is radians.
         
     Returns
-    -------
+    --------------------------------------------
     numpy.ndarray
         Easting values (in m)
         
     numpy.ndarray
         Northing values (in m)
-        
-    Examples
-    --------
-    >>> get_easting_northing_from_gps_lat_long([55.5], [-1.54])
-    (array([429157.0]), array([623009]))
     
     References
-    ----------
+    --------------------------------------------
     Based on the formulas in "A guide to coordinate systems in Great Britain".
     See also https://webapps.bgs.ac.uk/data/webservices/convertForm.cfm
-    """
+    '''
     dat = Datum(a=6377563.396, b=6356256.910, F_0=0.9996012717, 
                 phi_0=np.deg2rad(49.0), lam_0=np.deg2rad(-2.), 
                 E_0=400000, N_0=-100000, H=24.7)
@@ -244,6 +240,9 @@ def tideplt(showplt=True, filename=None):
 
     Parameters
     ----------------------------------------------
+    showplt:    bool
+                Plots figure in kernel. Default True.
+    
     filename:   str or None
                 filename to save plot figure. Default None.
 
@@ -291,11 +290,11 @@ def rrt_value(long, lat, from_live=False):
 
     Parameters
     ---------------------------------------------------
-    long:   str or arraylike
+    long:   float or arraylike
             Longitude of a list of points or a single
             point
 
-    lat:    str or arraylike
+    lat:    float or arraylike
             Latitude of a list of points or a single point
 
     from_live:  bool
@@ -348,6 +347,28 @@ def rrt_value(long, lat, from_live=False):
 
 
 def get_nearest_stations(long, lat, radius=30000, qualifier="river"):
+    '''
+    Search for nearest stations for a single long/lat input.
+    For England and Wales.
+    
+    Parameters
+    -----------------------------------------------------
+    long: float
+          Longitude
+          
+    lat:  float
+          Latitude
+    
+    radius: float
+            Search radius in metres
+            
+    qualifier: "river", "rainfall" or "tide"
+               Type of station to return
+    
+    Returns
+    -----------------------------------------------------
+    Pandas DataFrame of nearest stations sorted by distance.
+    '''
     
     path =  os.sep.join((os.path.dirname(__file__), 
                          'data', f'{qualifier}data.csv'))
