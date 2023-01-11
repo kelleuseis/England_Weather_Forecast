@@ -39,8 +39,8 @@ class TsCSVDataset(Dataset):
             self.targets = torch.tensor(dataset.iloc[:,-1].values, dtype=torch.float32)
             self.data = torch.tensor(dataset.iloc[:,:-1].values, dtype=torch.float32)
         else:
-            self.targets = dataset.iloc[self.sequence_length:]
-            self.data = dataset.iloc[:-1]           
+            self.targets = torch.tensor(dataset.iloc[lag:].values, dtype=torch.float32)
+            self.data = torch.tensor(dataset.iloc[:-lag].values, dtype=torch.float32)         
 
         
     def __len__(self):
@@ -57,4 +57,4 @@ class TsCSVDataset(Dataset):
             batch = self.data[0:(idx+1)]
             batch = torch.cat((padding, batch), 0)
 
-        return batch, self.targets[idx_end]
+        return batch, self.targets[idx]
