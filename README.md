@@ -1,8 +1,8 @@
 # England Weather Forecast :sun_behind_rain_cloud:
 
-## PyPI Package for interacting with rainfall/river/tide/groundwater level data via DEFRA UK Flood Monitoring API, and UK Met Office UKV model online charts.
+### Python Package for interacting with rainfall/river/tide/groundwater level data via DEFRA UK Flood Monitoring API.
 
-Contains the following modules:
+## Contents
 
 <code>dataload.py</code>: for accessing archive data
 
@@ -14,9 +14,19 @@ Contains the following modules:
 
 <code>preprocess.py</code>: for transforming CSV/DataFrames into datasets suitable for time series model training
 
+## Installation Guide
 
+To install the required dependencies run:
 
+```bash
+conda env create -f environment.yml
+```
 
+The package can then be installed via:
+
+```bash
+python setup.py install --user
+```
 
 
 

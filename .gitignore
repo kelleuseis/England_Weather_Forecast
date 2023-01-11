@@ -1,6 +1,13 @@
 __pycache__/
 .ipynb_checkpoints/
+dist/
+build/
+England_Weather_Forecast.egg-info/
+
+level_forecast_tools/__pycache__/
 level_forecast_tools/.ipynb_checkpoints/
+level_forecast_tools/England_Weather_Forecast.egg-info/
+
 level_forecast_tools/data/.ipynb_checkpoints/
 level_forecast_tools/data/archive/
 
