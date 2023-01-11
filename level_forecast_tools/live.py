@@ -1,4 +1,4 @@
-"""Interactions with rainfall and river data."""
+"""Interactions with live rainfall and level data."""
 
 import pandas as pd
 import numpy as np
@@ -15,38 +15,37 @@ def get_live_station_measures(station_reference=None, param='rainfall', filename
     """Return readings from live API.
 
     Parameters
-    ----------
+    ------------------------------------------
 
     filename: str
         Write Filename
         
-    param: 'rainfall' or 'level'
+    param: 'rainfall' or 'level' or ''
         Station Parameter
         
-    station_reference: str, list or None
+    station_reference: str, array-like or None
         station_reference to return.
-
-    >>> data = get_live_station_data('1029TH', 'live_data.csv')
+        
+    Returns
+    ------------------------------------------
+    Pandas DataFrame of all most recent measures.
     """
     
-    assert (param == "rainfall") or (param == "level"), \
-            'Please specify a valid parameter: "rainfall" or "level"'
+    assert (param == "rainfall") or (param == "level") or (param == ''), \
+            'Please specify a valid parameter: "rainfall" or "level" or ""'
         
     with urllib.request.urlopen(
-        f'https://environment.data.gov.uk/flood-monitoring/id/measures.json?parameter={param}&_limit=5000'
+        f'https://environment.data.gov.uk/flood-monitoring/id/measures.json?parameter={param}&_limit=10000'
     ) as url:
-        file = pd.DataFrame(json.load(url)['items'])
+        file = pd.json_normalize(json.load(url)['items'])
         
-    data = file[['stationReference','latestReading','parameter',
-                 'qualifier','unitName']].set_index('stationReference')
-
-    data['latestReading'] = data['latestReading'].apply(lambda x: x['value'] if isinstance(x,dict) else np.nan)
-    data = data[~data.index.duplicated(keep='last')]
+    data = file[['stationReference', 'latestReading.value', 'parameter',
+                 'qualifier', 'unitName']].set_index('stationReference')
     
     if station_reference is not None:
         if isinstance(station_reference, str) == True:
             station_reference = [station_reference]
-        data = data.reindex(station_reference)
+        data = data[data.index.isin(station_reference)]
         
     if filename is not None:
         with open(filename,'w') as outfile:
@@ -55,8 +54,21 @@ def get_live_station_measures(station_reference=None, param='rainfall', filename
     return data
 
 
+def get_live_station_readings(station_reference):
+    url = 'https://environment.data.gov.uk/flood-monitoring/data/readings?_limit=10000'
+    with urllib.request.urlopen(
+        'https://environment.data.gov.uk/flood-monitoring/data/readings.json' +\
+        f'?stationReference={station_reference}&_limit=10000'
+    ) as url:
+        file = pd.DataFrame(json.load(url)['items'])
+    
+    stndict = file.reindex(['dateTime', 'value'], axis=1).set_index('dateTime').to_dict()['value']
+    stndict['stationReference'] = station_reference
+    
+    return stndict
 
-def retrieve_file():
+
+def retrieve_CSV():
     matches = []
     keywords = input('Please specify keyword(s) e.g. station, data: ')
 
@@ -80,25 +92,91 @@ def retrieve_file():
         print('DataFrame cannot be loaded: File does not contain the column "stationReference"')
         return None
 
-
     
-def download_station_data(url):
-    file = pd.read_json(url).pop('items')
+    
+def get_all_recent_readings(station_reference=None):
+    
+    if station_reference is None:
+        usrinp = input("Downloading the full dataset would take approx. 60 mins " + \
+                       "!!!Please ensure that output is saved to a variable!!! Proceed? [Y/N] ")
+
+        if usrinp.upper() == "N":
+            return None
+    
+    
+    def handler(signalnum, frame):
+        raise Exception
+    signal.signal(signal.SIGALRM, handler)
+    signal.alarm(30)
+
     try:
-        file['maxOnRecord']=file.stageScale['maxOnRecord']['value']
-        file['minOnRecord']=file.stageScale['minOnRecord']['value']
-        file['typicalRangeHigh']=file.stageScale['typicalRangeHigh']
-        file['typicalRangeLow']=file.stageScale['typicalRangeLow']
+        data = get_live_station_measures(param='')
+        data = data[~data.index.duplicated(keep='last')]
     except:
         pass
+    
+    signal.alarm(0) 
+    assert 'data' in locals(), "504 Gateway Timeout Error: Cannot fetch station list"
+    
+    print("List of live stations fetched successfully!")
+    
+    if station_reference is not None:
+        if isinstance(station_reference, str):
+            station_reference = [station_reference]
+        data = data[data.index.isin(station_reference)]
+    
+        
+    executor = ThreadPoolExecutor(max_workers=min(os.cpu_count()+4, len(data.index)))
+    futures = []
+    stnvallist = []
+    
+    for ref in tqdm(data.index.tolist()):
+        futures.append(executor.submit(get_live_station_readings, ref))
+    
+    print("Download requested! Starting download ...")
+    done,_ = wait(futures)
+    print("Dataset downloaded! Saving to variable ...")
+    
+    for future in tqdm(done):
+        try:
+            stnvallist.append(future.result())
+        except:
+            continue
+
+    executor.shutdown(wait=False)
+    
+    
+    stnvaldf = pd.DataFrame(stnvallist).set_index('stationReference').transpose()
+    
+    print("Downloaded dataset now saved to variable")
+            
+    return stnvaldf
+   
+    
+    
+def download_station_info(station_reference):
+    
+    with urllib.request.urlopen(
+        f"https://environment.data.gov.uk/flood-monitoring/id/stations/{station_reference}.json"
+    ) as url:
+        file = pd.json_normalize(json.load(url)['items'])
+    
+    try:
+        file['maxOnRecord']=file['stageScale.maxOnRecord.value']
+        file['minOnRecord']=file['stageScale.minOnRecord.value']
+        file['typicalRangeHigh']=file['stageScale.typicalRangeHigh']
+        file['typicalRangeLow']=file['stageScale.typicalRangeLow']
+    except:
+        pass
+    
     stninfo = file.reindex(['stationReference', 'lat', 'long',
                             'easting', 'northing', 'maxOnRecord', 'minOnRecord',
-                            'typicalRangeHigh', 'typicalRangeLow']).to_dict()
+                            'typicalRangeHigh', 'typicalRangeLow'], axis=1).to_dict('records')[0]
     return stninfo
 
 
 
-def download_all_station_data(param="level", df=None):
+def download_all_station_info(param="level", df=None):
     
     if df is None:
         usrinp = input("Input DataFrame not specified: " + \
@@ -106,7 +184,7 @@ def download_all_station_data(param="level", df=None):
                        "(This will not overwrite the file.) [Y/N] ")
         
         if usrinp.upper() != "N":
-            df = retrieve_file()
+            df = retrieve_CSV()
     
     
     usrinp = input("Downloading the full dataset would take approx. 60 mins " + \
@@ -123,6 +201,7 @@ def download_all_station_data(param="level", df=None):
     
     try:
         data = get_live_station_measures(param=param)
+        data = data[~data.index.duplicated(keep='last')]
     except:
         pass
     
@@ -141,8 +220,7 @@ def download_all_station_data(param="level", df=None):
     stninfolist = []
     
     for ref in tqdm(data.index.tolist()):
-        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{ref}.json"
-        futures.append(executor.submit(download_station_data, url))
+        futures.append(executor.submit(download_station_info, ref))
     
     print("Download requested! Starting download ...")
     done,_ = wait(futures)
@@ -171,7 +249,7 @@ if __name__=="__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--param', type = str, 
-                        help = 'Station Parameter ("rainfall" or "level")')
+                        help = 'Station Parameter ("rainfall" or "level" or "")')
     parser.add_argument('-f', '--file', type = str, help = 'Write Filename')
     args = parser.parse_args()
     
