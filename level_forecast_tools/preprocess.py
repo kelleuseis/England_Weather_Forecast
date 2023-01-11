@@ -8,6 +8,8 @@ import torch.nn as nn
 from torch.utils.data import Dataset
             
 class TsCSVDataset(Dataset):
+    '''Generate Pytorch timeseries dataset from csv file'''
+    
     def __init__(self, path, sequence_length, lag=1, 
                  mean=None, std=None, 
                  train_size=0.7, train=True):

@@ -25,6 +25,8 @@ class database_info():
         
         
     def infolist(self):
+        '''Print database information'''
+        
         inspector = sa.inspect(self.engine)
     
         for tbname in inspector.get_table_names():
@@ -41,6 +43,7 @@ class database_info():
                 
                 
     def delete(self, tbname):
+        '''Delete table from database if exists'''
         sql.execute(f'DROP TABLE IF EXISTS {tbname}', self.engine)
 
     
