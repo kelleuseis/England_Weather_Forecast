@@ -7,7 +7,7 @@ import pandas as pd
 import pygmt
 from sklearn.neighbors import NearestNeighbors
 
-from .live import *
+from level_forecast_tools.live import *
 
 
 class Ellipsoid(object):
